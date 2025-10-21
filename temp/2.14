@@ -1,0 +1,12 @@
+Requirement already satisfied: PySide6 in d:\anaconda\lib\site-packages (6.8.2.1)
+Collecting qt-material
+  Downloading qt_material-2.14-py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: shiboken6==6.8.2.1 in d:\anaconda\lib\site-packages (from PySide6) (6.8.2.1)
+Requirement already satisfied: PySide6-Essentials==6.8.2.1 in d:\anaconda\lib\site-packages (from PySide6) (6.8.2.1)
+Requirement already satisfied: PySide6-Addons==6.8.2.1 in d:\anaconda\lib\site-packages (from PySide6) (6.8.2.1)
+Requirement already satisfied: Jinja2 in d:\anaconda\lib\site-packages (from qt-material) (3.1.4)
+Requirement already satisfied: MarkupSafe>=2.0 in d:\anaconda\lib\site-packages (from Jinja2->qt-material) (2.1.3)
+Downloading qt_material-2.14-py3-none-any.whl (1.7 MB)
+   ---------------------------------------- 1.7/1.7 MB 15.2 MB/s eta 0:00:00
+Installing collected packages: qt-material
+Successfully installed qt-material-2.14
