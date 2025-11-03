@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频人脸识别系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 24px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.5em;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .nav-section {
+            padding: 0 16px;
+            margin-bottom: 24px;
+        }
+
+        .nav-section-title {
+            font-size: 0.75em;
+            text-transform: uppercase;
+            opacity: 0.7;
+            padding: 8px 8px 12px;
+            letter-spacing: 1px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: white;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateX(4px);
+        }
+
+        .nav-item.active {
+            background: rgba(255,255,255,0.25);
+            font-weight: 600;
+        }
+
+        .nav-item-icon {
+            font-size: 1.3em;
+            width: 24px;
+            text-align: center;
+        }
+
+        .nav-item-text {
+            flex: 1;
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 32px;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h2 {
+            font-size: 2em;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            color: #718096;
+            font-size: 1.05em;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: #f7fafc;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 24px;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #edf2f7;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e6f0ff;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            color: #667eea;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 0.9em;
+            color: #4a5568;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+
+        .sample-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .sample-item {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .sample-item:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .sample-name {
+            font-weight: 500;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .sample-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #cbd5e0;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .comparison-item {
+            text-align: center;
+        }
+
+        .comparison-item h4 {
+            color: #4a5568;
+            margin-bottom: 12px;
+        }
+
+        .image-placeholder {
+            width: 100%;
+            height: 200px;
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #a0aec0;
+            font-size: 3em;
+        }
+
+        .result-area {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 24px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #718096;
+            margin-top: 20px;
+        }
+
+        .info-box {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: #2c5282;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .status-empty {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        /* 移动端响应式 */
+        .mobile-menu-btn {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            font-size: 1.5em;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        @media (max-width: 968px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 80px 20px 20px;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <!-- 移动端菜单按钮 -->
+        <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+
+        <!-- 侧边栏 -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>🎬 视频分析系统</h1>
+                <p>智能视频处理平台</p>
+            </div>
+
+            <nav class="nav-section">
+                <div class="nav-section-title">视频处理</div>
+                <a class="nav-item active" href="#" onclick="showSection('shot-detection', event)">
+                    <span class="nav-item-icon">✂️</span>
+                    <span class="nav-item-text">镜头切分</span>
+                </a>
+                <a class="nav-item" href="#" onclick="showSection('color-analysis', event)">
+                    <span class="nav-item-icon">🎨</span>
+                    <span class="nav-item-text">色彩分析</span>
+                </a>
+                <a class="nav-item" href="#" onclick="showSection('object-detection', event)">
+                    <span class="nav-item-icon">🎯</span>
+                    <span class="nav-item-text">物体检测</span>
+                </a>
+                <a class="nav-item" href="#" onclick="showSection('subtitle-recognition', event)">
+                    <span class="nav-item-icon">📝</span>
+                    <span class="nav-item-text">字幕识别</span>
+                </a>
+            </nav>
+
+            <nav class="nav-section">
+                <div class="nav-section-title">人脸识别</div>
+                <a class="nav-item" href="#" onclick="showSection('face-recognition', event)">
+                    <span class="nav-item-icon">👤</span>
+                    <span class="nav-item-text">人脸识别</span>
+                </a>
+                <a class="nav-item" href="#" onclick="showSection('face-comparison', event)">
+                    <span class="nav-item-icon">👥</span>
+                    <span class="nav-item-text">人脸对比</span>
+                </a>
+            </nav>
+
+            <nav class="nav-section">
+                <div class="nav-section-title">结果查看</div>
+                <a class="nav-item" href="#" onclick="showSection('results', event)">
+                    <span class="nav-item-icon">📊</span>
+                    <span class="nav-item-text">结果预览</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 镜头切分 -->
+            <div id="shot-detection" class="content-section active">
+                <div class="page-header">
+                    <h2>✂️ 镜头切分</h2>
+                    <p>自动检测并分割视频中的镜头片段</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">视频上传</h3>
+                    <div class="info-box">
+                        💡 支持 MP4, AVI, MOV 等常见视频格式，拖拽文件或点击上传区域选择文件
+                    </div>
+                    <div class="upload-area" onclick="document.getElementById('videoInput1').click()">
+                        <div class="upload-icon">📁</div>
+                        <p style="color: #4a5568; margin-bottom: 8px;">点击上传或拖拽视频文件到此处</p>
+                        <p style="color: #a0aec0; font-size: 0.9em;">本地视频路径：C:\videos\movie.mp4</p>
+                        <input type="file" id="videoInput1" accept="video/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">参数设置</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>⏱️ 帧头切分阈值(th)</label>
+                            <input type="number" value="0.5" step="0.1" min="0" max="1">
+                        </div>
+                        <div class="form-group">
+                            <label>📊 最小镜头长度(帧)</label>
+                            <input type="number" value="15" min="1">
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-primary">🔍 开始切分</button>
+                        <button class="btn btn-success">💾 导出结果</button>
+                        <button class="btn btn-secondary">🔄 重置</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">切分结果</h3>
+                    <div class="result-area">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3em; margin-bottom: 10px;">✂️</div>
+                            <p>处理完成后，镜头切分结果将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 色彩分析 -->
+            <div id="color-analysis" class="content-section">
+                <div class="page-header">
+                    <h2>🎨 色彩分析</h2>
+                    <p>分析视频中的主要色彩分布和色调变化</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">参数设置</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>🎨 色彩聚类数</label>
+                            <input type="number" value="5" min="1" max="20">
+                        </div>
+                        <div class="form-group">
+                            <label>📐 采样间隔(帧)</label>
+                            <input type="number" value="30" min="1">
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-primary">🎨 开始分析</button>
+                        <button class="btn btn-success">💾 导出色板</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">色彩分布</h3>
+                    <div class="result-area">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3em; margin-bottom: 10px;">🎨</div>
+                            <p>色彩分析结果将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 物体检测 -->
+            <div id="object-detection" class="content-section">
+                <div class="page-header">
+                    <h2>🎯 物体检测</h2>
+                    <p>识别视频中出现的物体和场景</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">检测设置</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>🎯 置信度阈值</label>
+                            <input type="number" value="0.5" step="0.1" min="0" max="1">
+                        </div>
+                        <div class="form-group">
+                            <label>📊 检测间隔(帧)</label>
+                            <input type="number" value="10" min="1">
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-primary">🎯 开始检测</button>
+                        <button class="btn btn-success">💾 导出标注</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">检测结果</h3>
+                    <div class="result-area">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3em; margin-bottom: 10px;">🎯</div>
+                            <p>物体检测结果将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 字幕识别 -->
+            <div id="subtitle-recognition" class="content-section">
+                <div class="page-header">
+                    <h2>📝 字幕识别</h2>
+                    <p>提取并识别视频中的字幕文本</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">识别设置</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>📝 字幕识别阈值</label>
+                            <input type="number" value="48" min="0" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label>🌐 识别语言</label>
+                            <select style="padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1em;">
+                                <option value="zh">中文</option>
+                                <option value="en">英文</option>
+                                <option value="auto">自动检测</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-primary">📝 开始识别</button>
+                        <button class="btn btn-success">💾 导出字幕</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">字幕文本</h3>
+                    <div class="result-area">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3em; margin-bottom: 10px;">📝</div>
+                            <p>识别的字幕文本将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 人脸识别 -->
+            <div id="face-recognition" class="content-section">
+                <div class="page-header">
+                    <h2>👤 人脸识别</h2>
+                    <p>检测并识别视频中出现的人脸</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">👥 样本库管理</h3>
+                    <div class="form-grid" style="grid-template-columns: 2fr 1fr; margin-bottom: 16px;">
+                        <div class="form-group">
+                            <label>姓名</label>
+                            <input type="text" placeholder="如：张三" value="张三">
+                        </div>
+                        <div class="form-group">
+                            <label>上传人脸样本</label>
+                            <input type="file" accept="image/*" style="padding: 10px;">
+                        </div>
+                    </div>
+                    <div class="button-group" style="margin-bottom: 20px;">
+                        <button class="btn btn-primary">➕ 添加样本</button>
+                        <button class="btn btn-danger">🗑️ 清空样本库</button>
+                    </div>
+                    <div class="sample-list">
+                        <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #a0aec0;">
+                            <div style="font-size: 3em; margin-bottom: 10px;">📭</div>
+                            <span class="status status-empty">暂无样本</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">从视频提取人脸</h3>
+                    <div class="button-group">
+                        <button class="btn btn-primary">🎯 提取关键帧人脸</button>
+                        <button class="btn btn-success">💾 保存结果</button>
+                    </div>
+                    <div class="result-area">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3em; margin-bottom: 10px;">👤</div>
+                            <p>提取的人脸将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 人脸对比 -->
+            <div id="face-comparison" class="content-section">
+                <div class="page-header">
+                    <h2>👥 人脸对比</h2>
+                    <p>比对两张人脸图片的相似度</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">上传对比图片</h3>
+                    <div class="comparison-grid">
+                        <div class="comparison-item">
+                            <h4>📷 图片一</h4>
+                            <div class="image-placeholder">🖼️</div>
+                            <input type="file" accept="image/*" style="margin-top: 12px; width: 100%;">
+                        </div>
+                        <div class="comparison-item">
+                            <h4>📷 图片二</h4>
+                            <div class="image-placeholder">🖼️</div>
+                            <input type="file" accept="image/*" style="margin-top: 12px; width: 100%;">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="margin-top: 20px; width: 100%; justify-content: center;">
+                        🔍 开始对比
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">对比结果</h3>
+                    <div class="result-area">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3em; margin-bottom: 10px;">📊</div>
+                            <p>对比结果将显示在这里</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 结果预览 -->
+            <div id="results" class="content-section">
+                <div class="page-header">
+                    <h2>📊 结果预览</h2>
+                    <p>查看所有处理结果的汇总</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">综合分析结果</h3>
+                    <div class="result-area" style="min-height: 400px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3em; margin-bottom: 10px;">🎬</div>
+                            <p>处理完成后，所有结果将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 切换内容区域
+        function showSection(sectionId, event) {
+            if (event) event.preventDefault();
+            
+            // 隐藏所有内容区域
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // 显示选中的内容区域
+            document.getElementById(sectionId).classList.add('active');
+            
+            // 更新导航项激活状态
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.nav-item').classList.add('active');
+            
+            // 移动端自动关闭侧边栏
+            if (window.innerWidth <= 968) {
+                document.getElementById('sidebar').classList.remove('show');
+            }
+        }
+
+        // 切换侧边栏显示/隐藏（移动端）
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+        }
+
+        // 拖拽上传功能
+        document.querySelectorAll('.upload-area').forEach(area => {
+            area.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                area.classList.add('dragover');
+            });
+            
+            area.addEventListener('dragleave', () => {
+                area.classList.remove('dragover');
+            });
+            
+            area.addEventListener('drop', (e) => {
+                e.preventDefault();
+                area.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    console.log('文件已上传:', files[0].name);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

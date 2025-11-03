@@ -7,78 +7,229 @@
     <link rel="stylesheet" href="/webui/styles.css" />
   </head>
   <body>
-    <header>
-      <h1>PyCinemetrics WebUI</h1>
-      <p>仅用于本地使用，服务地址：<code>http://localhost:8000</code></p>
-    </header>
+    <!-- 移动端菜单按钮 -->
+    <button id="mobile_menu_btn" class="mobile-menu-btn" aria-label="打开菜单">☰</button>
 
-    <main>
-      <section class="card">
-        <label for="video_path">本地视频路径：</label>
-        <input id="video_path" type="text" placeholder="例如 C:\\videos\\movie.mp4" />
-        <div id="dropzone" class="dropzone" title="将视频文件拖到这里，或点击选择">
-          将视频文件拖到这里，或点击选择上传（自动填充上方路径）
-          <input id="file_input" type="file" accept="video/*" hidden />
-        </div>
-        <div class="row">
-          <div class="field">
-            <label for="th">镜头切分阈值(th)：</label>
-            <input id="th" type="number" step="0.05" min="0" max="1" value="0.5" />
-          </div>
-          <div class="field">
-            <label for="colors_count">色彩聚类数：</label>
-            <input id="colors_count" type="number" min="2" max="12" value="5" />
-          </div>
-          <div class="field">
-            <label for="subtitle_value">字幕识别阈值：</label>
-            <input id="subtitle_value" type="number" min="1" max="255" value="48" />
-          </div>
+    <div class="layout">
+      <!-- 侧边栏 -->
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+          <h1>PyCinemetrics</h1>
+          <p>本地服务：<code>http://localhost:8000</code></p>
         </div>
 
-        <div class="actions">
-          <button id="btn_shotcut">镜头切分</button>
-          <button id="btn_colors">色彩分析</button>
-          <button id="btn_objects">物体检测</button>
-          <button id="btn_subtitles">字幕识别</button>
-          <button id="btn_shotscale">镜头尺度</button>
-          <button id="btn_refresh">刷新结果</button>
+        <div class="nav-section">
+          <div class="nav-section-title">功能</div>
+          <a href="#video" class="nav-item active" data-section="section-video">
+            <span class="nav-item-icon">🎬</span>
+            <span class="nav-item-text">视频处理</span>
+          </a>
+          <a href="#shotcut" class="nav-item" data-section="section-shotcut">
+            <span class="nav-item-icon">✂️</span>
+            <span class="nav-item-text">镜头切分</span>
+          </a>
+          <a href="#colors" class="nav-item" data-section="section-colors">
+            <span class="nav-item-icon">🎨</span>
+            <span class="nav-item-text">色彩分析</span>
+          </a>
+          <a href="#objects" class="nav-item" data-section="section-objects">
+            <span class="nav-item-icon">🎯</span>
+            <span class="nav-item-text">物体检测</span>
+          </a>
+          <a href="#subtitles" class="nav-item" data-section="section-subtitles">
+            <span class="nav-item-icon">📝</span>
+            <span class="nav-item-text">字幕识别</span>
+          </a>
+          <a href="#shotscale" class="nav-item" data-section="section-shotscale">
+            <span class="nav-item-icon">📐</span>
+            <span class="nav-item-text">镜头尺度</span>
+          </a>
+          <a href="#faces" class="nav-item" data-section="section-faces">
+            <span class="nav-item-icon">🙂</span>
+            <span class="nav-item-text">人脸识别</span>
+          </a>
+          <a href="#compare" class="nav-item" data-section="section-compare">
+            <span class="nav-item-icon">👥</span>
+            <span class="nav-item-text">人脸对比</span>
+          </a>
+          <a href="#results" class="nav-item" data-section="section-results">
+            <span class="nav-item-icon">📊</span>
+            <span class="nav-item-text">结果预览</span>
+          </a>
+        </div>
+      </aside>
+      <div id="sidebar_backdrop" class="sidebar-backdrop"></div>
+
+      <!-- 主内容区 -->
+      <main class="main-content">
+        <div class="page-header">
+          <h2 id="page_title">视频处理</h2>
+          <p>选择功能并开始分析</p>
+          <div id="status" class="status"></div>
         </div>
 
-        <div id="status" class="status"></div>
-      </section>
-
-      <section class="card">
-        <h2>人脸识别</h2>
-        <div class="faces">
-          <div class="faces-block">
-            <h3>样本库管理</h3>
+        <!-- 视频处理 -->
+        <section id="section-video" class="content-section active">
+          <div class="card">
+            <label for="video_path">本地视频路径</label>
+            <input id="video_path" type="text" placeholder="例如 C:\\videos\\movie.mp4" />
+            <div id="dropzone" class="dropzone" title="将视频文件拖到这里，或点击选择">
+              将视频文件拖到这里，或点击选择上传（自动填充上方路径）
+              <input id="file_input" type="file" accept="video/*" hidden />
+            </div>
             <div class="row">
               <div class="field">
-                <label for="face_name">姓名</label>
-                <input id="face_name" type="text" placeholder="如：张三" />
+                <label for="th">镜头切分阈值(th)</label>
+                <input id="th" type="number" step="0.05" min="0" max="1" value="0.5" />
               </div>
               <div class="field">
-                <label for="face_file">上传人脸样本图片</label>
-                <input id="face_file" type="file" accept="image/*" />
+                <label for="colors_count">色彩聚类数</label>
+                <input id="colors_count" type="number" min="2" max="12" value="5" />
+              </div>
+              <div class="field">
+                <label for="subtitle_value">字幕识别阈值</label>
+                <input id="subtitle_value" type="number" min="1" max="255" value="48" />
               </div>
             </div>
             <div class="actions">
-              <button id="btn_face_add">添加样本</button>
-              <button id="btn_face_list">刷新样本列表</button>
+              <button id="btn_shotcut">镜头切分</button>
+              <button id="btn_colors">色彩分析</button>
+              <button id="btn_objects">物体检测</button>
+              <button id="btn_subtitles">字幕识别</button>
+              <button id="btn_shotscale">镜头尺度</button>
+              <button id="btn_refresh">刷新结果</button>
             </div>
-            <div id="faces_known" class="faces-grid"></div>
           </div>
+        </section>
 
-          <div class="faces-block">
-            <h3>从关键帧提取人脸</h3>
+        <!-- 镜头切分 -->
+        <section id="section-shotcut" class="content-section">
+          <div class="card">
+            <h2 class="card-title">镜头切分</h2>
+            <div class="row">
+              <div class="field">
+                <label for="th">镜头切分阈值 (th)</label>
+                <input id="th" type="number" step="0.05" min="0" max="1" value="0.5" />
+              </div>
+            </div>
             <div class="actions">
-              <button id="btn_face_extract">提取人脸</button>
+              <button id="btn_shotcut" class="btn btn-primary">开始切分</button>
             </div>
-            <div id="faces_results" class="faces-grid"></div>
           </div>
+        </section>
 
-          <div class="faces-block">
-            <h3>人脸对比</h3>
+        <!-- 色彩分析 -->
+        <section id="section-colors" class="content-section">
+          <div class="card">
+            <h2 class="card-title">色彩分析</h2>
+            <div class="row">
+              <div class="field">
+                <label for="colors_count">色彩聚类数</label>
+                <input id="colors_count" type="number" min="2" max="12" value="5" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="btn_colors" class="btn btn-primary">开始分析</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 物体检测 -->
+        <section id="section-objects" class="content-section">
+          <div class="card">
+            <h2 class="card-title">物体检测</h2>
+            <div class="actions">
+              <button id="btn_objects" class="btn btn-primary">开始检测</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 字幕识别 -->
+        <section id="section-subtitles" class="content-section">
+          <div class="card">
+            <h2 class="card-title">字幕识别</h2>
+            <div class="row">
+              <div class="field">
+                <label for="subtitle_value">字幕识别阈值</label>
+                <input id="subtitle_value" type="number" min="1" max="255" value="48" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="btn_subtitles" class="btn btn-primary">开始识别</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 镜头尺度 -->
+        <section id="section-shotscale" class="content-section">
+          <div class="card">
+            <h2 class="card-title">镜头尺度</h2>
+            <div class="actions">
+              <button id="btn_shotscale" class="btn btn-primary">开始分析</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 人脸识别 -->
+        <section id="section-faces" class="content-section">
+          <div class="card">
+            <h2 class="card-title">人脸识别</h2>
+            <div class="faces">
+              <div class="faces-block">
+                <h3>样本库管理</h3>
+                <div class="row">
+                  <div class="field">
+                    <label for="face_name">姓名</label>
+                    <input id="face_name" type="text" placeholder="如：张三" />
+                  </div>
+                  <div class="field">
+                    <label for="face_file">上传人脸样本图片</label>
+                    <input id="face_file" type="file" accept="image/*" />
+                  </div>
+                </div>
+                <div class="actions">
+                  <button id="btn_face_add">添加样本</button>
+                  <button id="btn_face_list">刷新样本列表</button>
+                </div>
+                <div id="faces_known" class="faces-grid"></div>
+              </div>
+
+              <div class="faces-block">
+                <h3>从关键帧提取人脸</h3>
+                <div class="actions">
+                  <button id="btn_face_extract">提取人脸</button>
+                </div>
+                <div id="faces_results" class="faces-grid"></div>
+              </div>
+
+              <div class="faces-block">
+                <h3>人脸对比</h3>
+                <div class="row">
+                  <div class="field">
+                    <label for="face_cmp_1">图片一</label>
+                    <input id="face_cmp_1" type="file" accept="image/*" />
+                  </div>
+                  <div class="field">
+                    <label for="face_cmp_2">图片二</label>
+                    <input id="face_cmp_2" type="file" accept="image/*" />
+                  </div>
+                </div>
+                <div class="actions">
+                  <button id="btn_face_compare">开始对比</button>
+                </div>
+                <div class="faces-compare">
+                  <img id="face_compare_preview" alt="对比结果预览" />
+                  <div id="face_compare_text" class="status"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 人脸对比 -->
+        <section id="section-compare" class="content-section">
+          <div class="card">
+            <h2 class="card-title">人脸对比</h2>
             <div class="row">
               <div class="field">
                 <label for="face_cmp_1">图片一</label>
@@ -90,26 +241,30 @@
               </div>
             </div>
             <div class="actions">
-              <button id="btn_face_compare">开始对比</button>
+              <button id="btn_face_compare" class="btn btn-primary">开始对比</button>
             </div>
             <div class="faces-compare">
               <img id="face_compare_preview" alt="对比结果预览" />
               <div id="face_compare_text" class="status"></div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="card">
-        <h2>结果预览</h2>
-        <div id="results" class="results"></div>
-      </section>
-    </main>
+        <!-- 结果预览 -->
+        <section id="section-results" class="content-section">
+          <div class="card">
+            <h2 class="card-title">结果预览</h2>
+            <div id="results" class="results"></div>
+          </div>
+        </section>
+      </main>
+    </div>
 
     <footer>
-      <small>本界面仅在本机访问。不会开放公网。</small>
+      <small>本界面仅在本机访问，不会开放公网。</small>
     </footer>
 
     <script src="/webui/script.js"></script>
+    <script src="/webui/spa.js"></script>
   </body>
   </html>

@@ -4,7 +4,7 @@ const API = {
 };
 
 function qs(id){ return document.getElementById(id); }
-function setStatus(msg){ qs('status').textContent = msg || ''; }
+function setStatus(msg){ const el = qs('status'); if (el) el.textContent = msg || ''; }
 function disableAll(disabled){
   for (const id of ['btn_shotcut','btn_colors','btn_objects','btn_subtitles','btn_shotscale','btn_refresh']) {
     const el = qs(id); if (el) el.disabled = disabled;
@@ -27,9 +27,10 @@ async function getJSON(url){
 
 function resultsToCards(data){
   const wrap = qs('results');
+  if (!wrap) return;
   wrap.innerHTML = '';
   if (!data?.data?.exists){
-    wrap.innerHTML = '<div class="status">未找到结果目录，请先运行任一分析。</div>';
+    wrap.innerHTML = '<div class="status">未找到结果目录，请先运行任一分析</div>';
     return;
   }
   const files = data.data.files || {};
@@ -60,7 +61,7 @@ function resultsToCards(data){
 }
 
 async function refresh(){
-  const video_path = qs('video_path').value.trim();
+  const video_path = qs('video_path')?.value?.trim();
   if (!video_path){ setStatus('请填写本地视频路径'); return; }
   try{
     const data = await getJSON(API.endpoint(`/api/results?video_path=${encodeURIComponent(video_path)}`));
@@ -70,9 +71,9 @@ async function refresh(){
 }
 
 async function runTask(path, payload){
-  const video_path = qs('video_path').value.trim();
+  const video_path = qs('video_path')?.value?.trim();
   if (!video_path){ setStatus('请填写本地视频路径'); return; }
-  disableAll(true); setStatus('处理中... 这可能需要较长时间。');
+  disableAll(true); setStatus('处理中.. 这可能需要较长时间');
   try{
     const json = await postJSON(API.endpoint(path), { video_path, ...payload });
     setStatus(json.message || '完成');
@@ -82,14 +83,15 @@ async function runTask(path, payload){
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  // 默认同源（服务器同时提供前端和API）
+  // 同源（服务器同时提供前端与 API）
   API.base = '';
-  qs('btn_shotcut').addEventListener('click', ()=> runTask('/api/shotcut', { th: parseFloat(qs('th').value || '0.5') }));
-  qs('btn_colors').addEventListener('click', ()=> runTask('/api/colors', { colors_count: parseInt(qs('colors_count').value || '5',10) }));
-  qs('btn_objects').addEventListener('click', ()=> runTask('/api/objects', {}));
-  qs('btn_subtitles').addEventListener('click', ()=> runTask('/api/subtitles', { subtitle_value: parseInt(qs('subtitle_value').value || '48',10) }));
-  qs('btn_shotscale').addEventListener('click', ()=> runTask('/api/shotscale', {}));
-  qs('btn_refresh').addEventListener('click', refresh);
+  const bShot = qs('btn_shotcut'); if (bShot) bShot.addEventListener('click', ()=> runTask('/api/shotcut', { th: parseFloat(qs('th')?.value || '0.5') }));
+  const bCol = qs('btn_colors'); if (bCol) bCol.addEventListener('click', ()=> runTask('/api/colors', { colors_count: parseInt(qs('colors_count')?.value || '5',10) }));
+  const bObj = qs('btn_objects'); if (bObj) bObj.addEventListener('click', ()=> runTask('/api/objects', {}));
+  const bSub = qs('btn_subtitles'); if (bSub) bSub.addEventListener('click', ()=> runTask('/api/subtitles', { subtitle_value: parseInt(qs('subtitle_value')?.value || '48',10) }));
+  const bSS  = qs('btn_shotscale'); if (bSS) bSS.addEventListener('click', ()=> runTask('/api/shotscale', {}));
+  const bRef = qs('btn_refresh'); if (bRef) bRef.addEventListener('click', refresh);
+
   // Face UI bindings
   const bAdd = qs('btn_face_add');
   const bList = qs('btn_face_list');
@@ -99,7 +101,6 @@ window.addEventListener('DOMContentLoaded', () => {
   if (bList) bList.addEventListener('click', listKnownFaces);
   if (bExt) bExt.addEventListener('click', extractFaces);
   if (bCmp) bCmp.addEventListener('click', compareFaces);
-  // Initial faces list
   if (bList) listKnownFaces().catch(()=>{});
 });
 
@@ -132,12 +133,12 @@ async function uploadFile(file){
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const dz = qs('dropzone');
+  const dz = qs('dropzone') || qs('upload-area') || document.querySelector('.upload-area');
   const fi = qs('file_input');
   if (dz && fi){
     const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
     ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, (e)=>{ stop(e); dz.classList.add('dragover'); }));
-    ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, (e)=>{ stop(e); dz.classList.remove('dragover'); }));
+    ;['dragleave','dragend','drop'].forEach(ev => dz.addEventListener(ev, (e)=>{ stop(e); dz.classList.remove('dragover'); }));
     dz.addEventListener('drop', (e)=>{
       const files = e.dataTransfer?.files || [];
       if (files.length > 0){ uploadFile(files[0]); }
@@ -200,7 +201,7 @@ async function addFaceSample(){
 }
 
 async function extractFaces(){
-  const video_path = qs('video_path').value.trim();
+  const video_path = qs('video_path')?.value?.trim();
   if (!video_path){ setStatus('请填写本地视频路径'); return; }
   const wrap = qs('faces_results'); if (wrap) wrap.innerHTML = '处理中...';
   try{
@@ -218,7 +219,7 @@ async function extractFaces(){
         <img loading="lazy" src="${f.url}" alt="face">
         <div class="face-meta">
           <div class="face-name">${f.name || '未知人物'}${f.confidence ? ` (${f.confidence}%)` : ''}</div>
-          ${attrs ? `<div class="face-attrs">${attrs}</div>` : ''}
+          ${attrs ? `<div class=\"face-attrs\">${attrs}</div>` : ''}
         </div>
         <div class="face-add">
           <input type="text" placeholder="输入姓名后添加为样本" value="${guessed}">
@@ -263,3 +264,4 @@ async function compareFaces(){
     setStatus('对比完成');
   }catch(err){ setStatus('对比失败：' + err.message); }
 }
+
