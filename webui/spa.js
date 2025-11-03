@@ -3,30 +3,30 @@
   function init(){
     const pageTitle = document.getElementById('page_title');
     const sections = {
-      'video': 'section-video',
-      'shotcut': 'section-shotcut',
-      'colors': 'section-colors',
-      'objects': 'section-objects',
-      'subtitles': 'section-subtitles',
-      'shotscale': 'section-shotscale',
-      'faces': 'section-faces',
-      'compare': 'section-compare',
-      'results': 'section-results'
+      video: 'section-video',
+      shotcut: 'section-shotcut',
+      colors: 'section-colors',
+      objects: 'section-objects',
+      subtitles: 'section-subtitles',
+      shotscale: 'section-shotscale',
+      faces: 'section-faces',
+      compare: 'section-compare',
+      results: 'section-results'
     };
     const titles = {
-      'video': '视频处理',
-      'shotcut': '镜头切分',
-      'colors': '色彩分析',
-      'objects': '物体检测',
-      'subtitles': '字幕识别',
-      'shotscale': '镜头尺度',
-      'faces': '人脸识别',
-      'compare': '人脸对比',
-      'results': '结果预览'
+      video: '视频处理',
+      shotcut: '镜头切分',
+      colors: '色彩分析',
+      objects: '物体检测',
+      subtitles: '字幕识别',
+      shotscale: '镜头尺度',
+      faces: '人脸识别',
+      compare: '人脸对比',
+      results: '结果预览'
     };
 
     function showSection(key){
-      const targetId = sections[key] || sections['video'];
+      const targetId = sections[key] || sections.video;
       document.querySelectorAll('.content-section').forEach(sec => {
         sec.classList.toggle('active', sec.id === targetId);
       });
@@ -34,12 +34,13 @@
         const s = item.getAttribute('data-section');
         item.classList.toggle('active', s === targetId);
       });
-      if (pageTitle) pageTitle.textContent = titles[key] || titles['video'];
+      if (pageTitle) pageTitle.textContent = titles[key] || titles.video;
     }
 
     function keyFromHash(){
       const h = (location.hash || '#video').replace('#','');
-      return ['video','shotcut','colors','objects','subtitles','shotscale','faces','compare','results'].includes(h) ? h : 'video';
+      const allowed = ['video','shotcut','colors','objects','subtitles','shotscale','faces','compare','results'];
+      return allowed.includes(h) ? h : 'video';
     }
 
     function applyFromHash(){ showSection(keyFromHash()); }
@@ -88,3 +89,4 @@
     document.addEventListener('DOMContentLoaded', init);
   } else { init(); }
 })();
+

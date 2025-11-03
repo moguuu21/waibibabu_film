@@ -1,4 +1,5 @@
 
+
 # 视频工程/缓存/临时文件
 *.prproj      # Adobe Premiere
 *.aep         # After Effects
@@ -12,6 +13,7 @@
 *.cdl         # Color Decision List
 
 # 缓存与代理文件
+face_database/
 uploads/
 /proxy/
 /cache/
