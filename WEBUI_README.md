@@ -1,37 +1,31 @@
-# PyCinemetrics WebUI (本地版)
+﻿# PyCinemetrics WebUI (鏈湴鐗?
 
-运行一个本地 Web UI，通过 HTTP API 在 localhost 上调用现有算法。
+杩愯涓€涓湰鍦?Web UI锛岄€氳繃 HTTP API 鍦?localhost 涓婅皟鐢ㄧ幇鏈夌畻娉曘€?
+## 蹇€熷紑濮?(Windows)
 
-## 快速开始 (Windows)
-
-- 安装服务器依赖：
+- 瀹夎鏈嶅姟鍣ㄤ緷璧栵細
   - `pip install -r webui/requirements.txt`
-- 启动服务器：
-  - 双击 `run_webui.bat` 或在终端中运行 `.\run_webui.bat`
-- 在浏览器中打开：`http://127.0.0.1:8000`
+- 鍚姩鏈嶅姟鍣細
+  - 鍙屽嚮 `run_webui.bat` 鎴栧湪缁堢涓繍琛?`.\run_webui.bat`
+- 鍦ㄦ祻瑙堝櫒涓墦寮€锛歚http://127.0.0.1:8000`
 
-## 使用方法
+## 浣跨敤鏂规硶
 
-- 方式一：输入完整的本地视频路径，例如 `C:\\videos\\movie.mp4`
-- 方式二：直接将视频文件拖拽到输入框下方的“拖拽上传”区域，或点击该区域选择文件。上传完成后会自动填充路径。
-- 点击其中一个操作：Shotcut（镜头切换）、Colors（色彩）、Objects（物体）、Subtitles（字幕）、ShotScale（镜头景别）
-- 结果保存在 `img/<video_basename>/` 目录下，并在 UI 中预览
-
-## API 端点
+- 鏂瑰紡涓€锛氳緭鍏ュ畬鏁寸殑鏈湴瑙嗛璺緞锛屼緥濡?`C:\\videos\\movie.mp4`
+- 鏂瑰紡浜岋細鐩存帴灏嗚棰戞枃浠舵嫋鎷藉埌杈撳叆妗嗕笅鏂圭殑鈥滄嫋鎷戒笂浼犫€濆尯鍩燂紝鎴栫偣鍑昏鍖哄煙閫夋嫨鏂囦欢銆備笂浼犲畬鎴愬悗浼氳嚜鍔ㄥ～鍏呰矾寰勩€?- 鐐瑰嚮鍏朵腑涓€涓搷浣滐細Shotcut锛堥暅澶村垏鎹級銆丆olors锛堣壊褰╋級銆丱bjects锛堢墿浣擄級銆丼ubtitles锛堝瓧骞曪級銆丼hotScale锛堥暅澶存櫙鍒級
+- 缁撴灉淇濆瓨鍦?`img/<video_basename>/` 鐩綍涓嬶紝骞跺湪 UI 涓瑙?
+## API 绔偣
 
 - `POST /api/shotcut` JSON `{ video_path, th? }`
 - `POST /api/colors` JSON `{ video_path, colors_count? }`
 - `POST /api/objects` JSON `{ video_path }`
 - `POST /api/subtitles` JSON `{ video_path, subtitle_value? }`
 - `POST /api/shotscale` JSON `{ video_path }`
-- `GET  /api/results?video_path=...` -> 列出可用的结果和媒体 URL
+- `GET  /api/results?video_path=...` -> 鍒楀嚭鍙敤鐨勭粨鏋滃拰濯掍綋 URL
 
-## 配置
+## 閰嶇疆
 
-- 主机/端口：设置环境变量 `WEB_HOST`、`WEB_PORT`（默认为 `127.0.0.1:8000`）
+- 涓绘満/绔彛锛氳缃幆澧冨彉閲?`WEB_HOST`銆乣WEB_PORT`锛堥粯璁や负 `127.0.0.1:8000`锛?
+## 娉ㄦ剰浜嬮」
 
-## 注意事项
-
-- 服务器重用 `src/algorithms` 中的模块。对于需要帧的任务，如果缺少场景关键帧，将通过 TransNetV2 提取。
-- 物体检测需要 `models/` 目录下的 YOLO 文件（本仓库中已包含）。
-- 所有处理都在本地进行；服务器不提供远程访问。
+- 鏈嶅姟鍣ㄩ噸鐢?`src/algorithms` 涓殑妯″潡銆傚浜庨渶瑕佸抚鐨勪换鍔★紝濡傛灉缂哄皯鍦烘櫙鍏抽敭甯э紝灏嗛€氳繃 TransNetV2 鎻愬彇銆?- 鐗╀綋妫€娴嬮渶瑕?`models/` 鐩綍涓嬬殑 YOLO 鏂囦欢锛堟湰浠撳簱涓凡鍖呭惈锛夈€?- 鎵€鏈夊鐞嗛兘鍦ㄦ湰鍦拌繘琛岋紱鏈嶅姟鍣ㄤ笉鎻愪緵杩滅▼璁块棶銆?

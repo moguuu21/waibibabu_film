@@ -48,6 +48,59 @@
       </section>
 
       <section class="card">
+        <h2>人脸识别</h2>
+        <div class="faces">
+          <div class="faces-block">
+            <h3>样本库管理</h3>
+            <div class="row">
+              <div class="field">
+                <label for="face_name">姓名</label>
+                <input id="face_name" type="text" placeholder="如：张三" />
+              </div>
+              <div class="field">
+                <label for="face_file">上传人脸样本图片</label>
+                <input id="face_file" type="file" accept="image/*" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="btn_face_add">添加样本</button>
+              <button id="btn_face_list">刷新样本列表</button>
+            </div>
+            <div id="faces_known" class="faces-grid"></div>
+          </div>
+
+          <div class="faces-block">
+            <h3>从关键帧提取人脸</h3>
+            <div class="actions">
+              <button id="btn_face_extract">提取人脸</button>
+            </div>
+            <div id="faces_results" class="faces-grid"></div>
+          </div>
+
+          <div class="faces-block">
+            <h3>人脸对比</h3>
+            <div class="row">
+              <div class="field">
+                <label for="face_cmp_1">图片一</label>
+                <input id="face_cmp_1" type="file" accept="image/*" />
+              </div>
+              <div class="field">
+                <label for="face_cmp_2">图片二</label>
+                <input id="face_cmp_2" type="file" accept="image/*" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="btn_face_compare">开始对比</button>
+            </div>
+            <div class="faces-compare">
+              <img id="face_compare_preview" alt="对比结果预览" />
+              <div id="face_compare_text" class="status"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
         <h2>结果预览</h2>
         <div id="results" class="results"></div>
       </section>
