@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 from flask import Flask, request, jsonify, send_from_directory, Response
+from werkzeug.utils import secure_filename
 
 # Algorithms
 from algorithms.shotcutTransNetV2 import TransNetV2
@@ -16,6 +17,7 @@ from algorithms.shotscale import ShotScale
 BASE_DIR = Path(__file__).resolve().parent.parent
 IMG_DIR = BASE_DIR / "img"
 WEBUI_DIR = BASE_DIR / "webui"
+UPLOAD_DIR = BASE_DIR / "uploads"
 
 
 def ensure_dirs(path: Path):
@@ -77,6 +79,10 @@ def list_results(video_path: str) -> Dict[str, Any]:
 
 
 app = Flask(__name__)
+ensure_dirs(IMG_DIR)
+ensure_dirs(UPLOAD_DIR)
+
+ALLOWED_VIDEO_EXTS = {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.m4v', '.webm'}
 
 
 @app.get("/")
@@ -104,6 +110,43 @@ def api_results():
     if not video_path:
         return jsonify({"ok": False, "error": "missing video_path"}), 400
     return jsonify({"ok": True, "data": list_results(video_path)})
+
+
+@app.post("/api/upload")
+def api_upload():
+    file = request.files.get('file')
+    if file is None or file.filename == '':
+        return jsonify({"ok": False, "error": "no file uploaded"}), 400
+
+    ext = Path(file.filename).suffix.lower()
+    if ext not in ALLOWED_VIDEO_EXTS:
+        return jsonify({"ok": False, "error": f"unsupported file type: {ext}"}), 400
+
+    filename = secure_filename(file.filename)
+    save_path = UPLOAD_DIR / filename
+    if save_path.exists():
+        stem = save_path.stem
+        i = 1
+        while True:
+            candidate = UPLOAD_DIR / f"{stem}-{i}{ext}"
+            if not candidate.exists():
+                save_path = candidate
+                break
+            i += 1
+
+    try:
+        file.save(str(save_path))
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    return jsonify({
+        "ok": True,
+        "message": "upload success",
+        "data": {
+            "filename": save_path.name,
+            "saved_path": str(save_path),
+        }
+    })
 
 
 @app.post("/api/shotcut")
@@ -246,4 +289,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

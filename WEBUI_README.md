@@ -12,7 +12,8 @@
 
 ## 使用方法
 
-- 输入完整的本地视频路径，例如 `C:\\videos\\movie.mp4`
+- 方式一：输入完整的本地视频路径，例如 `C:\\videos\\movie.mp4`
+- 方式二：直接将视频文件拖拽到输入框下方的“拖拽上传”区域，或点击该区域选择文件。上传完成后会自动填充路径。
 - 点击其中一个操作：Shotcut（镜头切换）、Colors（色彩）、Objects（物体）、Subtitles（字幕）、ShotScale（镜头景别）
 - 结果保存在 `img/<video_basename>/` 目录下，并在 UI 中预览
 

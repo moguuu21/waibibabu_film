@@ -92,3 +92,46 @@ window.addEventListener('DOMContentLoaded', () => {
   qs('btn_refresh').addEventListener('click', refresh);
 });
 
+async function uploadFile(file){
+  if (!file){ setStatus('未选择文件'); return; }
+  const allowed = ['video/','application/octet-stream'];
+  const type = String(file.type || '').toLowerCase();
+  if (!allowed.some(p => type.startsWith(p))){
+    setStatus('不支持的文件类型');
+    return;
+  }
+  try{
+    setStatus('正在上传视频...');
+    const fd = new FormData();
+    fd.append('file', file, file.name);
+    const res = await fetch(API.endpoint('/api/upload'), { method:'POST', body: fd });
+    const json = await res.json().catch(()=>({ ok:false, error:'Invalid JSON' }));
+    if (!res.ok || !json.ok) throw new Error(json.error || res.statusText);
+    const saved = json.data?.saved_path;
+    if (saved){
+      qs('video_path').value = saved;
+      setStatus(`上传完成：${json.data.filename}`);
+      try{ await refresh(); }catch(_){ }
+    } else {
+      setStatus('上传失败：未返回保存路径');
+    }
+  }catch(err){
+    setStatus('上传失败：' + err.message);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const dz = qs('dropzone');
+  const fi = qs('file_input');
+  if (dz && fi){
+    const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+    ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, (e)=>{ stop(e); dz.classList.add('dragover'); }));
+    ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, (e)=>{ stop(e); dz.classList.remove('dragover'); }));
+    dz.addEventListener('drop', (e)=>{
+      const files = e.dataTransfer?.files || [];
+      if (files.length > 0){ uploadFile(files[0]); }
+    });
+    dz.addEventListener('click', ()=> fi.click());
+    fi.addEventListener('change', ()=>{ if (fi.files && fi.files[0]) uploadFile(fi.files[0]); });
+  }
+});

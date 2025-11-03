@@ -16,6 +16,10 @@
       <section class="card">
         <label for="video_path">本地视频路径：</label>
         <input id="video_path" type="text" placeholder="例如 C:\\videos\\movie.mp4" />
+        <div id="dropzone" class="dropzone" title="将视频文件拖到这里，或点击选择">
+          将视频文件拖到这里，或点击选择上传（自动填充上方路径）
+          <input id="file_input" type="file" accept="video/*" hidden />
+        </div>
         <div class="row">
           <div class="field">
             <label for="th">镜头切分阈值(th)：</label>
@@ -56,4 +60,3 @@
     <script src="/webui/script.js"></script>
   </body>
   </html>
-
