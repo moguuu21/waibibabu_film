@@ -12,6 +12,7 @@
 *.cdl         # Color Decision List
 
 # 缓存与代理文件
+uploads/
 /proxy/
 /cache/
 /temp/
