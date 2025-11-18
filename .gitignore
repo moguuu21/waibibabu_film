@@ -188,6 +188,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.webui-venv/
 env/
 venv/
 ENV/

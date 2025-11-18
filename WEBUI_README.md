@@ -1,92 +1,100 @@
-# PyCinemetrics WebUI（本地版）
+# PyCinemetrics WebUI 运行指南
 
-运行一个本地 Web UI，通过 HTTP API 在 localhost 上调用现有算法。
+PyCinemetrics WebUI 基于 Flask 提供网页端交互，调用 `src/` 下的分析能力；桌面端（Qt）和 WebUI 各自使用独立虚拟环境，互不干扰。
 
-## 快速开始（Windows）
+---
 
-- 安装服务器依赖：
-  - `pip install -r webui/requirements.txt`
-- 启动服务器：
-  - 双击 `run_webui.bat` 或在终端中运行 `.\run_webui.bat`
-- 在浏览器中打开：`http://127.0.0.1:8000`
+## 目录速览
+- `run_webui.bat`：Windows 启动脚本（创建/复用 `.webui-venv`，安装依赖并启动 `src/webserver.py`）
+- `.webui-venv/`：WebUI 专用虚拟环境（可随项目一起打包分发）
+- `.venv/`：桌面端/全量分析的虚拟环境
+- `webui/`：前端静态文件 (`index.html`, `styles.css`, `script.js`, `spa.js`, `video-face-recognition.html` 等)
+- `src/webserver.py`：Web API 入口
+- `img/`：生成的分析截图/可视化
+- `uploads/`：WebUI 上传的视频文件
+- `face_database/`：人脸库
+- 其他数据/模型：`models/`, `resources/`, `native/` 等
 
-## 使用方法
+---
 
-- 方式一：输入完整的本地视频路径，例如 `C:\\videos\\movie.mp4`
-- 方式二：拖拽上传或点击选择视频文件。上传完成后会自动填充路径。
-- 在 UI 中点击以下任一操作：
-  - Shotcut（镜头切换）
-  - Colors（色彩）
-  - Objects（物体）
-  - Subtitles（字幕）
-  - ShotScale（镜头景别）
-  - Face（人脸相关功能）
-- 结果保存到 `img/<video_basename>/` 目录，并在 UI 中预览。
+## 环境与依赖
+- 桌面端/全功能分析：使用 `.venv`，依赖清单 `requirements.txt`（含 PySide6、TensorFlow、检测/识别等全量依赖）。
+- WebUI：使用 `.webui-venv`，依赖清单 `webui/requirements.txt`（Flask + 必需依赖，已补充 `numpy` 以避免 “No module named numpy” 报错）。
+- 互通性：桌面端环境可运行 WebUI；WebUI 的轻量环境不一定能跑桌面端。
 
-## 目录结构（核心）
+---
 
-- `webui/`
-  - `index.html`：主页面（单页应用入口）
-  - `styles.css`：样式文件
-  - `script.js`：功能脚本（与后端 API 交互）
-  - `spa.js`：简易路由/视图切换
-  - `video-face-recognition.html`：人脸识别/比对页面
-  - `FACE_UI.md`：人脸 UI 使用说明
-  - `requirements.txt`：Web 端所需 Python 依赖（Flask 等）
-- `src/webserver.py`：Flask 后端服务与 API 实现
-- `img/`：分析结果输出目录（按视频基名分子目录）
-- `uploads/`：上传的临时文件目录
-- `face_database/`：已登记的人脸样本库
-- `run_webui.bat`：Windows 启动脚本
+## 快速上手
 
-## 静态资源与路由
+### 1) 准备
+确保安装 Python 3.8+ 且 `python`/`pip` 在 PATH。
 
-- `GET /` -> `webui/index.html`
-- `GET /webui/<file>` -> WebUI 静态资源（HTML/CSS/JS）
-- `GET /media/<base>/<file>` -> 结果资源（如导出的图片、SRT 等）
-- `GET /face_db/<file>` -> 人脸库图片
-- `GET /media-temp/<file>` -> 临时生成的图片
+### 2) 桌面端 / 全量分析
+```bat
+cd C:\01subject\03design\01do\movie\pyCinemetrics
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
+python src/main.py
+```
 
-## API 端点
+### 3) WebUI（自动处理 `.webui-venv`）
+```bat
+cd C:\01subject\03design\01do\movie\pyCinemetrics
+.\run_webui.bat
+```
+- 首次运行会创建/检查 `.webui-venv` 并安装 `webui/requirements.txt`。
+- 指定 Python：
+```bat
+set WEBUI_PYTHON=C:\Path\To\python.exe
+.\run_webui.bat
+```
+- 跳过依赖检查（已预装时）：
+```bat
+set WEBUI_SKIP_INSTALL=1
+.\run_webui.bat
+```
+- 自定义 Host/Port：
+```bat
+set WEB_HOST=0.0.0.0
+set WEB_PORT=8000
+.\run_webui.bat
+```
+启动后访问 <http://127.0.0.1:8000>
 
-- `GET  /api/results?video_path=...`：列出该视频可用的结果与媒体 URL
-- `POST /api/upload`（multipart form-data）
-  - 字段：`file`（视频文件）
-- `POST /api/shotcut` JSON `{ video_path, th? }`
-- `POST /api/colors` JSON `{ video_path, colors_count? }`
-- `POST /api/objects` JSON `{ video_path }`
-- `POST /api/subtitles` JSON `{ video_path, subtitle_value? }`
-- `POST /api/shotscale` JSON `{ video_path }`
+---
 
-人脸相关 API：
+## 常见问题 & 排查
+- **No module named numpy**：`webui/requirements.txt` 已包含 `numpy`。若仍报错，执行：
+  ```bat
+  cd C:\01subject\03design\01do\movie\pyCinemetrics
+  .\.webui-venv\Scripts\activate
+  pip install numpy==1.24.3
+  ```
+  或删除 `.webui-venv` 后重跑 `run_webui.bat`。
+- **Failed to create .webui-venv**：确认 Python 3.8+ 在 PATH，或设置 `WEBUI_PYTHON` 使用指定解释器。
+- **依赖安装慢/失败**：可在 `webui/requirements.txt` 中切换可信镜像源；或预先装好 `.webui-venv` 与项目一并分发。
+- **端口未生效**：检查启动日志 `Running on http://...`；需在运行前设置 `WEB_HOST/WEB_PORT`。
+- **虚拟环境损坏**：删除对应虚拟环境目录（`.webui-venv` 或 `.venv`），按上方步骤重新创建。
 
-- `GET    /api/faces`：列出人脸库
-- `POST   /api/faces/add`（multipart form-data）：添加人脸样本
-  - 字段：`name`、`file`
-- `POST   /api/faces/add_by_path` JSON `{ image_path, name }`：从本地路径添加样本
-- `DELETE /api/faces/<filename>`：删除样本
-- `POST   /api/face/extract_frames` JSON `{ video_path }`：从关键帧抽取/识别人脸
-- `POST   /api/face/compare`（multipart form-data）：人脸比对
-  - 字段：`file1`、`file2`
+---
 
-## 输出文件说明（位于 `img/<video_basename>/`）
-
-- `color.png`、`color_palette.png`：主色与调色板
-- `objects.png`：物体检测可视化
-- `shotscale.png`、`shotscale_timeline.png`：景别统计与时间线
-- `subtitles_timeline.png`、`subtitle.srt`：字幕时间线与导出的 SRT
-- `predictions_visualization.png`：镜头切分可视化
-- `scenes.txt`：场景切分信息
-- `frame/`：关键帧目录（按需自动生成）
-- `faces/`：抽取的人脸图片与标注
-
-## 配置
-
-- 主机/端口：环境变量 `WEB_HOST`、`WEB_PORT`（默认 `127.0.0.1:8000`）
-
-## 注意事项
-
-- 需要帧的任务若缺少场景关键帧，将通过 TransNetV2 自动提取。
-- 物体检测需要 `models/` 目录中的 YOLO 模型文件（本仓库已包含）。
-- 所有处理均在本地执行；默认仅监听本机回环地址（不对外开放）。
+## API 简要
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/` | 返回 webui/index.html |
+| GET | `/webui/<file>` | 前端静态文件 |
+| GET | `/media/<base>/<file>` | 分析产物（含 CSV/SRT 等） |
+| GET | `/face_db/<file>` | 人脸库文件 |
+| GET | `/media-temp/<file>` | 临时媒体 |
+| GET | `/api/results?video_path=...` | 返回分析结果 |
+| POST | `/api/upload` | 上传视频 (`multipart/form-data`, `file`) |
+| POST | `/api/shotcut` `/api/colors` `/api/objects` `/api/subtitles` `/api/shotscale` | 分析各模块，JSON 需带 `video_path` |
+| GET | `/api/faces` | 列出人脸库 |
+| POST | `/api/faces/add` | 上传文件添加人脸 (`name` + `file`) |
+| POST | `/api/faces/add_by_path` | 文件路径添加人脸 (`image_path` + `name`) |
+| DELETE | `/api/faces/<filename>` | 删除人脸 |
+| POST | `/api/face/extract_frames` | 从视频抽帧建库 |
+| POST | `/api/face/compare` | 人脸比对 |
 
