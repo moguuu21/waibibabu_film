@@ -2,6 +2,7 @@ import os
 import threading
 from pathlib import Path
 from typing import Dict, Any, Optional
+import numpy as np  # 新增 numpy 引用
 
 from flask import Flask, request, jsonify, send_from_directory, Response
 from werkzeug.utils import secure_filename
@@ -36,7 +37,8 @@ def ensure_keyframes(video_path: str, target_dir: Path) -> None:
     frame_dir.mkdir(parents=True, exist_ok=True)
 
     # If frames already exist, skip
-    has_any = any(p.suffix.lower() in {".jpg", ".jpeg", ".png"} for p in frame_dir.glob("*"))
+    has_any = any(p.suffix.lower() in {
+                  ".jpg", ".jpeg", ".png"} for p in frame_dir.glob("*"))
     if has_any:
         return
 
@@ -95,7 +97,9 @@ def get_face() -> FaceRecognition:
         _FACE = FaceRecognition()
     return _FACE
 
-ALLOWED_VIDEO_EXTS = {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.m4v', '.webm'}
+
+ALLOWED_VIDEO_EXTS = {'.mp4', '.mkv', '.avi',
+                      '.mov', '.wmv', '.flv', '.m4v', '.webm'}
 
 
 @app.get("/")
@@ -127,6 +131,13 @@ def media_temp(filename: str):
     temp_dir = IMG_DIR / "temp"
     ensure_dirs(temp_dir)
     return send_from_directory(str(temp_dir), filename)
+
+# 新增：允许直接访问上传的视频文件进行预览
+
+
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_DIR, filename)
 
 
 @app.get("/api/results")
@@ -190,18 +201,57 @@ def api_shotcut():
 
     try:
         model = TransNetV2()
+        # scenes 可能是 numpy 数组
         scenes = model.shotcut_detection(
             v_path=video_path,
             image_save=str(out_dir),
             frame_save=str(frame_dir),
             th=th,
         )
+
+        # 将 numpy 数据类型序列化为标准 Python 类型
+        scenes_serializable = []
+        if scenes is not None:
+            if hasattr(scenes, 'tolist'):
+                scenes_serializable = scenes.tolist()
+            elif isinstance(scenes, list):
+                for shot in scenes:
+                    clean_shot = []
+                    if isinstance(shot, (list, tuple)):
+                        for item in shot:
+                            if isinstance(item, (np.integer, np.int32, np.int64)):
+                                clean_shot.append(int(item))
+                            elif isinstance(item, (np.floating, np.float32, np.float64)):
+                                clean_shot.append(float(item))
+                            else:
+                                clean_shot.append(item)
+                    elif isinstance(shot, dict):
+                        clean_shot = {}
+                        for k, v in shot.items():
+                            if isinstance(v, (np.integer, np.int32, np.int64)):
+                                clean_shot[k] = int(v)
+                            elif isinstance(v, (np.floating, np.float32, np.float64)):
+                                clean_shot[k] = float(v)
+                            else:
+                                clean_shot[k] = v
+                    else:
+                        clean_shot = shot
+
+                    # 如果是 TransNetV2 返回的列表格式 [start, end, duration]，可能是 list 也可能是 dict
+                    # 这里做个兼容处理，确保它是 Python 原生类型
+                    scenes_serializable.append(clean_shot)
+
         return jsonify({
             "ok": True,
-            "message": f"Shotcut done. Scenes: {len(scenes) if scenes else 0}",
+            "message": f"Shotcut done. Scenes: {len(scenes_serializable)}",
+            "data": {
+                "scenes": scenes_serializable
+            },
             "results": list_results(video_path),
         })
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
@@ -272,10 +322,24 @@ def api_subtitles():
             video_path, str(out_dir), subtitle_value
         )
         processor.subtitle2Srt(subtitle_list, str(out_dir))
+
+        # 读取生成的 SRT 文件内容返回给前端
+        srt_content = ""
+        srt_path = out_dir / "subtitle.srt"
+        if srt_path.exists():
+            try:
+                with open(srt_path, 'r', encoding='utf-8') as f:
+                    srt_content = f.read()
+            except Exception as read_err:
+                print(f"Read SRT error: {read_err}")
+
         return jsonify({
             "ok": True,
             "message": "Subtitle OCR done",
             "results": list_results(video_path),
+            "data": {
+                "srt_content": srt_content
+            }
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -305,7 +369,7 @@ def api_shotscale():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-# -------------------- Face APIs --------------------
+# -------------------- Face APIs (保持原样) --------------------
 @app.get("/api/faces")
 def api_faces_list():
     items = []
@@ -330,7 +394,6 @@ def api_faces_add():
         if file is None or file.filename == '':
             return jsonify({"ok": False, "error": "未上传图片文件"}), 400
 
-        # Save temp upload, then add via recognizer (which crops and stores)
         filename = secure_filename(file.filename)
         tmp_path = UPLOAD_DIR / f"upload_face_{filename}"
         file.save(str(tmp_path))
@@ -339,7 +402,6 @@ def api_faces_add():
             ok, msg = face.add_face(str(tmp_path), name)
             if not ok:
                 return jsonify({"ok": False, "error": msg}), 400
-            # Reload in-memory DB to ensure new face available
             face._load_known_faces()
         finally:
             try:
@@ -381,7 +443,6 @@ def api_faces_delete(filename: str):
         return jsonify({"ok": False, "error": "文件不存在"}), 404
     try:
         p.unlink()
-        # refresh in-memory DB
         try:
             get_face()._load_known_faces()
         except Exception:
@@ -404,19 +465,17 @@ def api_face_extract_frames():
     frames_dir = out_dir / "frame"
     ensure_dirs(frames_dir)
     try:
-        # ensure keyframes exist
         ensure_keyframes(video_path, out_dir)
-        # output directory for faces (stable path)
         faces_dir = out_dir / "faces"
         ensure_dirs(faces_dir)
-        # clean old faces
         for fp in faces_dir.glob("*.jpg"):
             try:
                 fp.unlink()
             except Exception:
                 pass
         fr = get_face()
-        out_dir_real, faces = fr.extract_faces_from_frames(str(frames_dir), str(faces_dir))
+        out_dir_real, faces = fr.extract_faces_from_frames(
+            str(frames_dir), str(faces_dir))
         items = []
         for it in faces:
             face_file = it.get("face_file")
@@ -477,7 +536,6 @@ def api_face_compare():
 def main():
     host = os.environ.get("WEB_HOST", "127.0.0.1")
     port = int(os.environ.get("WEB_PORT", "8000"))
-    # threaded=True allows concurrent requests while long tasks run
     app.run(host=host, port=port, debug=False, threaded=True)
 
 

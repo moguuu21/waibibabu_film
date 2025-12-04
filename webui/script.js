@@ -1,261 +1,360 @@
 const API = {
-  base: '',
-  endpoint(path) { return `${this.base}${path}`; }
+    base: '',
+    endpoint(path) { return `${this.base}${path}`; }
 };
 
-function qs(id){ return document.getElementById(id); }
-function setStatus(msg){ const el = qs('status'); if (el) el.textContent = msg || ''; }
-function disableAll(disabled){
-  ['btn_shotcut','btn_colors','btn_objects','btn_subtitles','btn_shotscale','btn_refresh']
-    .forEach(id => { const el = qs(id); if (el) el.disabled = disabled; });
+const dom = {
+    video: document.getElementById('main_player'),
+    dropzone: document.querySelector('.video-container'),
+    videoPathInput: document.getElementById('video_path'),
+    fileInput: document.getElementById('file_input'),
+    status: document.getElementById('status_log'),
+    badge: document.getElementById('shot_count_badge'),
+    
+    // Result views
+    tabs: document.querySelectorAll('.tab-btn'),
+    views: document.querySelectorAll('.result-view'),
+    
+    timeline: document.getElementById('timeline_track'),
+    subList: document.getElementById('subtitle_list'),
+    chartBox: document.getElementById('chart_container')
+};
+
+// 状态管理
+let currentVideoData = {
+    duration: 0,
+    totalFrames: 0
+};
+
+// --------------- 工具函数 ---------------
+function log(msg) {
+    const time = new Date().toLocaleTimeString();
+    dom.status.textContent = `[${time}] ${msg}`;
+    // 自动滚动到底部
+    dom.status.scrollTop = dom.status.scrollHeight;
 }
 
-async function postJSON(url, payload){
-  const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-  const json = await res.json().catch(()=>({ ok:false, error:'Invalid JSON' }));
-  if (!res.ok || !json.ok) throw new Error(json.error || res.statusText);
-  return json;
-}
-
-async function getJSON(url){
-  const res = await fetch(url);
-  const json = await res.json().catch(()=>({ ok:false, error:'Invalid JSON' }));
-  if (!res.ok || !json.ok) throw new Error(json.error || res.statusText);
-  return json;
-}
-
-function resultsToCards(data){
-  const wrap = qs('results');
-  if (!wrap) return;
-  wrap.innerHTML = '';
-  if (!data || !data.data || !data.data.exists){
-    wrap.innerHTML = '<div class="status">No results found. Run an analysis first.</div>';
-    return;
-  }
-  const files = data.data.files || {};
-  const mapping = [
-    ['color', 'Color Analysis'],
-    ['color_palette', 'Color Palette'],
-    ['objects', 'Object Detection'],
-    ['shotscale', 'Shot Scale Summary'],
-    ['shotscale_timeline', 'Shot Scale Timeline'],
-    ['subtitles_timeline', 'Subtitles Timeline']
-  ];
-  for (const [key, title] of mapping){
-    if (files[key]){
-      const div = document.createElement('div');
-      div.className = 'result-item';
-      div.innerHTML = `<h3>${title}</h3><img loading="lazy" src="${files[key]}" alt="${title}" />`;
-      wrap.appendChild(div);
+async function postJSON(url, payload) {
+    const res = await fetch(url, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(payload) 
+    });
+    // 尝试解析 JSON，如果失败则抛出文本错误
+    const text = await res.text();
+    let json;
+    try {
+        json = JSON.parse(text);
+    } catch (e) {
+        throw new Error(`Server returned invalid JSON: ${text.substring(0, 100)}...`);
     }
-  }
-  if (files['subtitle_srt']){
-    const a = document.createElement('a');
-    a.href = files['subtitle_srt'];
-    a.textContent = 'Download Subtitles (SRT)';
-    a.style.display = 'inline-block';
-    a.style.marginTop = '8px';
-    wrap.appendChild(a);
-  }
+    
+    if (!res.ok || !json.ok) {
+        throw new Error(json.error || res.statusText);
+    }
+    return json;
 }
 
-async function refresh(){
-  const video_path = (qs('video_path') && qs('video_path').value || '').trim();
-  if (!video_path){ setStatus('Please enter a local video path.'); return; }
-  try{
-    const data = await getJSON(API.endpoint(`/api/results?video_path=${encodeURIComponent(video_path)}`));
-    resultsToCards(data);
-    setStatus('Results refreshed.');
-  }catch(err){ setStatus('Refresh failed: ' + err.message); }
+// 格式化秒数为 MM:SS
+function formatTime(seconds) {
+    if (!seconds && seconds !== 0) return "--:--";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-async function runTask(path, payload){
-  const video_path = (qs('video_path') && qs('video_path').value || '').trim();
-  if (!video_path){ setStatus('Please enter a local video path.'); return; }
-  disableAll(true); setStatus('Processing... This may take a while.');
-  try{
-    const json = await postJSON(API.endpoint(path), { video_path, ...payload });
-    setStatus(json.message || 'Done.');
-    resultsToCards({ data: json.results });
-  }catch(err){ setStatus('Error: ' + err.message); }
-  finally { disableAll(false); }
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-  API.base = '';
-  const on = (id, fn) => { const el = qs(id); if (el) el.addEventListener('click', fn); };
-  on('btn_shotcut',   ()=> runTask('/api/shotcut',   { th: parseFloat((qs('th') && qs('th').value) || '0.5') }));
-  on('btn_colors',    ()=> runTask('/api/colors',    { colors_count: parseInt((qs('colors_count') && qs('colors_count').value) || '5',10) }));
-  on('btn_objects',   ()=> runTask('/api/objects',   {}));
-  on('btn_subtitles', ()=> runTask('/api/subtitles', { subtitle_value: parseInt((qs('subtitle_value') && qs('subtitle_value').value) || '48',10) }));
-  on('btn_shotscale', ()=> runTask('/api/shotscale', {}));
-  on('btn_refresh',   refresh);
-
-  // Face features
-  const bAdd = qs('btn_face_add');
-  const bList = qs('btn_face_list');
-  const bExt = qs('btn_face_extract');
-  const bCmp = qs('btn_face_compare');
-  if (bAdd) bAdd.addEventListener('click', addFaceSample);
-  if (bList) bList.addEventListener('click', listKnownFaces);
-  if (bExt) bExt.addEventListener('click', extractFaces);
-  if (bCmp) bCmp.addEventListener('click', compareFaces);
-  if (bList) listKnownFaces().catch(()=>{});
+// --------------- Tab 切换 ---------------
+dom.tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+        dom.tabs.forEach(b => b.classList.remove('active'));
+        dom.views.forEach(v => v.classList.remove('active'));
+        
+        btn.classList.add('active');
+        const targetId = btn.getAttribute('data-target');
+        document.getElementById(targetId).classList.add('active');
+    });
 });
 
-async function uploadFile(file){
-  if (!file){ setStatus('No file selected.'); return; }
-  const allowed = ['video/','application/octet-stream'];
-  const type = String(file.type || '').toLowerCase();
-  if (!allowed.some(p => type.startsWith(p))){ setStatus('Unsupported file type.'); return; }
-  try{
-    setStatus('Uploading video...');
-    const fd = new FormData();
-    fd.append('file', file, file.name);
-    const res = await fetch(API.endpoint('/api/upload'), { method:'POST', body: fd });
-    const json = await res.json().catch(()=>({ ok:false, error:'Invalid JSON' }));
-    if (!res.ok || !json.ok) throw new Error(json.error || res.statusText);
-    const saved = json.data && json.data.saved_path;
-    if (saved){
-      qs('video_path').value = saved;
-      setStatus(`Uploaded: ${json.data.filename}`);
-      try{ await refresh(); }catch(_){ }
-    } else {
-      setStatus('Upload failed: no saved path.');
-    }
-  }catch(err){ setStatus('Upload failed: ' + err.message); }
+function switchToTab(targetId) {
+    const btn = document.querySelector(`.tab-btn[data-target="${targetId}"]`);
+    if(btn) btn.click();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const dz = document.getElementById('dropzone') || document.querySelector('.upload-area');
-  const fi = document.getElementById('file_input');
-  if (dz && fi){
-    const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
-    ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, (e)=>{ stop(e); dz.classList.add('dragover'); }));
-    ['dragleave','dragend','drop'].forEach(ev => dz.addEventListener(ev, (e)=>{ stop(e); dz.classList.remove('dragover'); }));
-    dz.addEventListener('drop', (e)=>{
-      const files = (e.dataTransfer && e.dataTransfer.files) || [];
-      if (files.length > 0){ uploadFile(files[0]); }
-    });
-    dz.addEventListener('click', ()=> fi.click());
-    fi.addEventListener('change', ()=>{ if (fi.files && fi.files[0]) uploadFile(fi.files[0]); });
-  }
+// --------------- 视频加载逻辑 ---------------
+async function handleFileUpload(file) {
+    if (!file) return;
+    
+    log('正在上传视频...');
+    const fd = new FormData();
+    fd.append('file', file);
+    
+    try {
+        const res = await fetch(API.endpoint('/api/upload'), { method: 'POST', body: fd });
+        const json = await res.json();
+        
+        if (json.ok) {
+            log(`上传成功: ${json.data.filename}`);
+            
+            dom.videoPathInput.value = json.data.saved_path;
+            
+            // 设置预览源
+            const filename = json.data.filename;
+            dom.video.src = `/uploads/${filename}`;
+            dom.video.style.display = 'block';
+            document.getElementById('video_placeholder').style.display = 'none';
+            
+            // 重置状态
+            dom.timeline.innerHTML = '<div class="placeholder-text">请在右侧运行“镜头切分”</div>';
+            dom.subList.innerHTML = '<div class="placeholder-text">请在右侧运行“字幕识别”</div>';
+            dom.chartBox.innerHTML = '<div class="placeholder-text">暂无图表</div>';
+            
+            dom.video.onloadedmetadata = () => {
+                currentVideoData.duration = dom.video.duration;
+                log(`视频加载完成: ${currentVideoData.duration.toFixed(2)}s`);
+            };
+        } else {
+            throw new Error(json.error);
+        }
+    } catch (err) {
+        log(`上传失败: ${err.message}`);
+    }
+}
+
+// --------------- 拖拽事件 ---------------
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dom.dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault(); 
+        e.stopPropagation();
+    }, false);
 });
 
-// ---------------- Face features ----------------
-async function listKnownFaces(){
-  const wrap = qs('faces_known'); if (!wrap) return;
-  wrap.innerHTML = 'Loading...';
-  try{
-    const json = await getJSON(API.endpoint('/api/faces'));
-    const list = json.faces || [];
-    if (list.length === 0){ wrap.innerHTML = '<div class="status">No samples yet.</div>'; return; }
-    wrap.innerHTML = '';
-    for (const it of list){
-      const div = document.createElement('div');
-      div.className = 'face-item';
-      div.innerHTML = `
-        <img loading="lazy" src="${it.url}" alt="${it.name}">
-        <div class="face-meta">
-          <div class="face-name">${it.name}</div>
-          <button class="danger" data-file="${it.filename}">删除</button>
-        </div>`;
-      wrap.appendChild(div);
+dom.dropzone.addEventListener('dragover', () => dom.dropzone.classList.add('dragover'));
+dom.dropzone.addEventListener('dragleave', () => dom.dropzone.classList.remove('dragover'));
+dom.dropzone.addEventListener('drop', (e) => {
+    dom.dropzone.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length) handleFileUpload(files[0]);
+});
+
+document.getElementById('btn_select_file').addEventListener('click', () => dom.fileInput.click());
+dom.fileInput.addEventListener('change', (e) => handleFileUpload(e.target.files[0]));
+
+
+// --------------- 1. 镜头切分 ---------------
+document.getElementById('btn_shotcut').addEventListener('click', async () => {
+    const video_path = dom.videoPathInput.value;
+    if (!video_path) { log('请先上传视频'); return; }
+
+    const th = parseFloat(document.getElementById('th').value);
+    
+    log('开始镜头切分 (TransNetV2)... 这可能需要一段时间');
+    switchToTab('view_timeline');
+    dom.timeline.innerHTML = '<div class="placeholder-text"><i class="fas fa-spinner fa-spin"></i> 分析中...</div>';
+    
+    try {
+        const data = await postJSON(API.endpoint('/api/shotcut'), { video_path, th });
+        log(data.message);
+        
+        const scenes = data.data && data.data.scenes;
+        if (scenes && scenes.length > 0) {
+            renderTimeline(scenes);
+        } else {
+            dom.timeline.innerHTML = '<div class="placeholder-text">未检测到镜头切换</div>';
+        }
+    } catch (err) {
+        log(`切分失败: ${err.message}`);
+        dom.timeline.innerHTML = '<div class="placeholder-text error">分析出错</div>';
     }
-    wrap.querySelectorAll('button.danger').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const file = btn.getAttribute('data-file');
-        if (!file) return;
-        try{
-          const res = await fetch(API.endpoint('/api/faces/' + encodeURIComponent(file)), { method:'DELETE' });
-          const j = await res.json().catch(()=>({ok:false,error:'Invalid JSON'}));
-          if (!res.ok || !j.ok) throw new Error(j.error || res.statusText);
-          await listKnownFaces();
-        }catch(err){ setStatus('Delete failed: ' + err.message); }
-      });
+});
+
+function renderTimeline(scenes) {
+    dom.timeline.innerHTML = ''; 
+    dom.badge.textContent = scenes.length;
+    
+    // 获取最后一帧作为总帧数估算
+    const lastScene = scenes[scenes.length - 1];
+    // 兼容字典或数组格式
+    const totalFrames = (Array.isArray(lastScene)) ? lastScene[1] : lastScene.end_frame;
+    
+    scenes.forEach((shot, index) => {
+        let start, end;
+        if (Array.isArray(shot)) {
+            start = shot[0]; end = shot[1];
+        } else {
+            start = shot.start_frame; end = shot.end_frame;
+        }
+        
+        const el = document.createElement('div');
+        el.className = 'shot-block';
+        
+        const durationFrames = end - start;
+        const widthPercent = (durationFrames / totalFrames) * 100;
+        
+        el.style.width = `calc(${widthPercent}% - 1px)`;
+        if (widthPercent < 0.5) el.style.minWidth = '2px';
+        
+        el.style.opacity = (index % 2 === 0) ? 1 : 0.85;
+
+        // Tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'shot-tooltip';
+        
+        const startTime = (start / totalFrames) * currentVideoData.duration;
+        const durationSec = (durationFrames / totalFrames) * currentVideoData.duration;
+        
+        tooltip.innerText = `Shot ${index + 1}\n${formatTime(startTime)}\nDur: ${durationSec.toFixed(1)}s`;
+        el.appendChild(tooltip);
+        
+        el.addEventListener('click', () => {
+            document.querySelectorAll('.shot-block').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            if (currentVideoData.duration) {
+                dom.video.currentTime = startTime;
+                dom.video.play();
+            }
+        });
+
+        dom.timeline.appendChild(el);
     });
-  }catch(err){ wrap.innerHTML = '<div class="status">Load failed: ' + err.message + '</div>'; }
 }
 
-async function addFaceSample(){
-  const name = (qs('face_name') && qs('face_name').value || '').trim();
-  const file = qs('face_file') && qs('face_file').files && qs('face_file').files[0];
-  if (!name){ setStatus('Please enter a name.'); return; }
-  if (!file){ setStatus('Please choose a sample image.'); return; }
-  try{
-    const fd = new FormData();
-    fd.append('name', name);
-    fd.append('file', file, file.name);
-    const res = await fetch(API.endpoint('/api/faces/add'), { method:'POST', body: fd });
-    const j = await res.json().catch(()=>({ok:false,error:'Invalid JSON'}));
-    if (!res.ok || !j.ok) throw new Error(j.error || res.statusText);
-    setStatus(j.message || 'Added.');
-    try{ await listKnownFaces(); }catch(_){ }
-  }catch(err){ setStatus('Add failed: ' + err.message); }
-}
 
-async function extractFaces(){
-  const video_path = (qs('video_path') && qs('video_path').value || '').trim();
-  if (!video_path){ setStatus('Please enter a local video path.'); return; }
-  const wrap = qs('faces_results'); if (wrap) wrap.innerHTML = 'Processing...';
-  try{
-    const j = await postJSON(API.endpoint('/api/face/extract_frames'), { video_path });
-    const faces = (j && j.data && j.data.faces) || [];
-    if (!wrap) return;
-    if (faces.length === 0){ wrap.innerHTML = '<div class="status">No faces found in keyframes.</div>'; return; }
-    wrap.innerHTML = '';
-    for (const f of faces){
-      const guessed = (f.name && f.name !== '未知人物') ? f.name : '';
-      const div = document.createElement('div');
-      div.className = 'face-item';
-      const attrs = (f.attributes || []).map(a => Array.isArray(a)? `${a[0]}(${a[1]})` : a).join(' · ');
-      div.innerHTML = `
-        <img loading="lazy" src="${f.url}" alt="face">
-        <div class="face-meta">
-          <div class="face-name">${f.name || '未知人物'}${f.confidence ? ` (${f.confidence}%)` : ''}</div>
-          ${attrs ? `<div class=\"face-attrs\">${attrs}</div>` : ''}
-        </div>
-        <div class="face-add">
-          <input type="text" placeholder="输入姓名后添加为样本" value="${guessed}">
-          <button>Add</button>
-        </div>`;
-      const btn = div.querySelector('button');
-      const inp = div.querySelector('input');
-      btn.addEventListener('click', async ()=>{
-        const name = (inp.value || '').trim();
-        if (!name){ setStatus('Please enter a name first.'); return; }
-        try{
-          const res = await fetch(API.endpoint('/api/faces/add_by_path'), {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ image_path: f.path, name })
-          });
-          const jr = await res.json().catch(()=>({ok:false,error:'Invalid JSON'}));
-          if (!res.ok || !jr.ok) throw new Error(jr.error || res.statusText);
-          setStatus('Added to database: ' + name);
-          try{ await listKnownFaces(); }catch(_){ }
-        }catch(err){ setStatus('Add failed: ' + err.message); }
-      });
-      wrap.appendChild(div);
+// --------------- 2. 字幕识别 ---------------
+document.getElementById('btn_subtitles').addEventListener('click', async () => {
+    const video_path = dom.videoPathInput.value;
+    if (!video_path) { log('请先上传视频'); return; }
+
+    const val = parseInt(document.getElementById('subtitle_value').value) || 48;
+    log('开始字幕识别... (请耐心等待)');
+    
+    switchToTab('view_subtitles');
+    dom.subList.innerHTML = '<div class="placeholder-text"><i class="fas fa-spinner fa-spin"></i> 识别中...</div>';
+
+    try {
+        const response = await postJSON(API.endpoint('/api/subtitles'), { video_path, subtitle_value: val });
+        console.log("Subtitle response:", response);
+        log(response.message);
+        
+        if (response.data && response.data.srt_content && response.data.srt_content.trim() !== "") {
+            renderSubtitles(response.data.srt_content);
+        } else {
+            dom.subList.innerHTML = '<div class="placeholder-text">识别结果为空</div>';
+        }
+    } catch (err) {
+        log('错误: ' + err.message);
+        dom.subList.innerHTML = `<div class="placeholder-text error">识别失败: ${err.message}</div>`;
     }
-  }catch(err){ if (wrap) wrap.innerHTML = '<div class="status">Failed: ' + err.message + '</div>'; }
+});
+
+function renderSubtitles(srtContent) {
+    dom.subList.innerHTML = '';
+    const normalizedContent = srtContent.replace(/\r\n/g, '\n');
+    const blocks = normalizedContent.split(/\n{2,}/);
+    let validCount = 0;
+
+    blocks.forEach(block => {
+        const lines = block.trim().split('\n');
+        if (lines.length >= 2) {
+            const timeLineIndex = lines.findIndex(line => line.includes('-->'));
+            if (timeLineIndex !== -1) {
+                const timeLine = lines[timeLineIndex].trim();
+                const text = lines.slice(timeLineIndex + 1).join(' ').trim();
+                
+                if (!text) return;
+
+                // Parse 00:00:01,000
+                const timeMatch = timeLine.match(/(\d{2}):(\d{2}):(\d{2})[,.](\d{3})/);
+                let startTime = 0;
+                if (timeMatch) {
+                    startTime = parseInt(timeMatch[1]) * 3600 + 
+                                parseInt(timeMatch[2]) * 60 + 
+                                parseInt(timeMatch[3]) + 
+                                parseInt(timeMatch[4]) / 1000;
+                }
+
+                const el = document.createElement('div');
+                el.className = 'sub-item';
+                el.innerHTML = `
+                    <span class="sub-time"><i class="far fa-clock"></i> ${timeLine}</span>
+                    <span class="sub-text">${text}</span>
+                `;
+                
+                el.addEventListener('click', () => {
+                    document.querySelectorAll('.sub-item').forEach(i => i.classList.remove('active'));
+                    el.classList.add('active');
+                    dom.video.currentTime = startTime;
+                    dom.video.play();
+                });
+                
+                dom.subList.appendChild(el);
+                validCount++;
+            }
+        }
+    });
+
+    if (validCount === 0) {
+         dom.subList.innerHTML = '<div class="placeholder-text">无法解析 SRT 内容</div>';
+    }
 }
 
-async function compareFaces(){
-  const f1 = qs('face_cmp_1') && qs('face_cmp_1').files && qs('face_cmp_1').files[0];
-  const f2 = qs('face_cmp_2') && qs('face_cmp_2').files && qs('face_cmp_2').files[0];
-  if (!f1 || !f2){ setStatus('Choose two images to compare.'); return; }
-  try{
-    const fd = new FormData();
-    fd.append('file1', f1, f1.name);
-    fd.append('file2', f2, f2.name);
-    const res = await fetch(API.endpoint('/api/face/compare'), { method:'POST', body: fd });
-    const j = await res.json().catch(()=>({ok:false,error:'Invalid JSON'}));
-    if (!res.ok || !j.ok) throw new Error(j.error || res.statusText);
-    const img = qs('face_compare_preview');
-    const info = qs('face_compare_text');
-    if (img && j.image_url) img.src = j.image_url;
-    if (info) info.textContent = `${j.message} (similarity ${j.similarity}%)`;
-    setStatus('Comparison done.');
-  }catch(err){ setStatus('Compare failed: ' + err.message); }
+
+// --------------- 3. 图表分析 (色彩/物体/景别) ---------------
+async function runVisualTask(apiUrl, payload, title) {
+    const video_path = dom.videoPathInput.value;
+    if (!video_path) { log('请先上传视频'); return; }
+
+    log(`正在进行${title}...`);
+    switchToTab('view_charts');
+    dom.chartBox.innerHTML = '<div class="placeholder-text"><i class="fas fa-spinner fa-spin"></i> 处理中...</div>';
+
+    try {
+        const data = await postJSON(API.endpoint(apiUrl), { video_path, ...payload });
+        log(data.message);
+        renderCharts(data.results.files);
+    } catch (err) {
+        log('错误: ' + err.message);
+        dom.chartBox.innerHTML = '<div class="placeholder-text error">处理失败</div>';
+    }
 }
 
+document.getElementById('btn_colors').addEventListener('click', () => {
+    const count = parseInt(document.getElementById('colors_count').value) || 5;
+    runVisualTask('/api/colors', { colors_count: count }, '色彩分析');
+});
+
+document.getElementById('btn_objects').addEventListener('click', () => {
+    runVisualTask('/api/objects', {}, '物体检测');
+});
+
+document.getElementById('btn_shotscale').addEventListener('click', () => {
+    runVisualTask('/api/shotscale', {}, '景别分析');
+});
+
+function renderCharts(files) {
+    dom.chartBox.innerHTML = '';
+    
+    const map = [
+        { key: 'color_palette', title: '色彩调色板' },
+        { key: 'color', title: '色彩统计' },
+        { key: 'objects', title: '物体检测统计' },
+        { key: 'shotscale_timeline', title: '景别时间线' },
+        { key: 'shotscale', title: '景别分布' },
+        { key: 'subtitle', title: '字幕词云' } // 假设词云也保存在结果里
+    ];
+
+    let hasContent = false;
+    map.forEach(item => {
+        if (files[item.key]) {
+            hasContent = true;
+            const card = document.createElement('div');
+            card.className = 'result-img-card';
+            const src = `${files[item.key]}?t=${new Date().getTime()}`;
+            card.innerHTML = `<h4>${item.title}</h4><a href="${src}" target="_blank"><img src="${src}"></a>`;
+            dom.chartBox.appendChild(card);
+        }
+    });
+
+    if (!hasContent) {
+        dom.chartBox.innerHTML = '<div class="placeholder-text">未生成图表</div>';
+    }
+}
